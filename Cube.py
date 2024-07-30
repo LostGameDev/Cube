@@ -100,14 +100,14 @@ def rotate_object(obj, angle, axis):
 	for i in range(len(obj)):
 		obj[i] = rotate_3dpoint(obj[i], angle, axis)
 
-def translate_object(cube_points_dict, name, dx, dy, dz):
+def translate_object(obj, dx, dy, dz):
 	"""Move an object by a specific amount along X, Y, and Z axes."""
-	for i in range(len(cube_points_dict[name])):
-		point = list(cube_points_dict[name][i])
+	for i in range(len(obj)):
+		point = list(obj[i])
 		point[0] += dx
 		point[1] += dy
 		point[2] += dz
-		cube_points_dict[name][i] = tuple(point)
+		obj[i] = tuple(point)
 
 def get_rotation_matrix_x(angle):
 	return np.array([
@@ -253,6 +253,14 @@ def main():
 			if event.type == QUIT:
 				pygame.quit()
 				return
+
+		if objects_loaded == True:
+			for i in loaded_objects_list:
+				#translate_object(cube_points_dict[i], 10, 10 ,10)
+				#rotate_object(cube_points_dict[i], 0.1, (0,1,0))
+				#rotate_object(cube_points_dict[i], 0.01, (0,0,1))
+				#rotate_object(cube_points_dict[i], 0.01, (1,0,0))
+				pass
 
 		# Get mouse movement
 		mouse_x, mouse_y = pygame.mouse.get_rel()

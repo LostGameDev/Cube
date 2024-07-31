@@ -123,14 +123,22 @@ def get_rotation_matrix_y(angle):
 		[-sin(angle), 0, cos(angle)]
 	])
 
-def apply_camera_rotation(points, rotation_matrix_x, rotation_matrix_y):
+def apply_camera_rotation(points):
+	"""Apply camera rotation to all points."""
+	angle_x = radians(CAMERA_ROT_X)
+	angle_y = radians(CAMERA_ROT_Y)
+
+	# Rotation matrices for X and Y axis
+	rotation_x = get_rotation_matrix_x(angle_x)
+	rotation_y = get_rotation_matrix_y(angle_y)
+
 	rotated_points = []
 	for point in points:
 		point = np.array(point)
 		# Rotate around Y-axis first
-		temp_point = np.dot(rotation_matrix_y, point)
+		temp_point = np.dot(rotation_y, point)
 		# Then rotate around X-axis
-		final_point = np.dot(rotation_matrix_x, temp_point)
+		final_point = np.dot(rotation_x, temp_point)
 		rotated_points.append(tuple(final_point))
 	return rotated_points
 
@@ -155,8 +163,75 @@ def rotate_camera(cube_points_dict):
 
 			cube_points_dict[name][i] = tuple(x_rotated)
 
-# Add rotation speed constants
-ROTATION_SPEED = 1
+def get_camera_direction():
+	forward_vector = np.array([cos(radians(CAMERA_ROT_Y)), 0, sin(radians(CAMERA_ROT_Y))])
+	CameraDirection = {"Forward": 0, "Back": 0, "Left": 0, "Right": 0, "Up": 0, "Down": 0, "PIDivBy2": 0, "NotPIDivBy2": 0}
+
+	if abs(forward_vector[0]) > abs(forward_vector[2]):
+		if forward_vector[0] > 0:
+			# Forward
+			CameraDirection["Forward"] = -1
+			CameraDirection["Back"] = 1
+			CameraDirection["Left"] = 1
+			CameraDirection["Right"] = -1
+			CameraDirection["Up"] = 0
+			CameraDirection["Down"] = 0
+			CameraDirection["PIDivBy2"] = np.pi / 2
+			CameraDirection["NotPIDivBy2"] = 0
+		else:
+			# Back
+			CameraDirection["Forward"] = 1
+			CameraDirection["Back"] = -1
+			CameraDirection["Left"] = -1
+			CameraDirection["Right"] = 1
+			CameraDirection["Up"] = 0
+			CameraDirection["Down"] = 0
+			CameraDirection["PIDivBy2"] = np.pi / 2
+			CameraDirection["NotPIDivBy2"] = 0
+	else:
+		if forward_vector[2] > 0:
+			# Left
+			CameraDirection["Forward"] = -1
+			CameraDirection["Back"] = 1
+			CameraDirection["Left"] = -1
+			CameraDirection["Right"] = 1
+			CameraDirection["Up"] = 0
+			CameraDirection["Down"] = 0
+			CameraDirection["PIDivBy2"] = 0
+			CameraDirection["NotPIDivBy2"] = np.pi / 2
+		else:
+			# Right
+			CameraDirection["Forward"] = 1
+			CameraDirection["Back"] = -1
+			CameraDirection["Left"] = 1
+			CameraDirection["Right"] = -1	
+			CameraDirection["Up"] = 0
+			CameraDirection["Down"] = 0
+			CameraDirection["PIDivBy2"] = 0
+			CameraDirection["NotPIDivBy2"] = np.pi / 2
+
+	if abs(CAMERA_ROT_X) > 45:
+		if CAMERA_ROT_X > 0:
+			# Down
+			CameraDirection["Forward"] = -1
+			CameraDirection["Back"] = 1
+			CameraDirection["Left"] = -1
+			CameraDirection["Right"] = 1
+			CameraDirection["Up"] = -1
+			CameraDirection["Down"] = -1
+			CameraDirection["PIDivBy2"] = 0
+			CameraDirection["NotPIDivBy2"] = np.pi / 2
+		else:
+			# Up
+			CameraDirection["Forward"] = 1
+			CameraDirection["Back"] = -1
+			CameraDirection["Left"] = 1
+			CameraDirection["Right"] = -1
+			CameraDirection["Up"] = 1
+			CameraDirection["Down"] = 1
+			CameraDirection["PIDivBy2"] = 0
+			CameraDirection["NotPIDivBy2"] = np.pi / 2
+	return CameraDirection
 
 def main():
 	global ORIGINX, ORIGINY, CAMERA_X, CAMERA_Y, CAMERA_Z, CAMERA_ROT_X, CAMERA_ROT_Y
@@ -166,7 +241,7 @@ def main():
 	ORIGINX = screen.get_width() / 2
 	ORIGINY = screen.get_height() / 2
 
-	enable_movement = True
+	enable_movement = False
 
 	objects_loaded = False
 	loaded_objects_list = []
@@ -174,10 +249,6 @@ def main():
 
 	background = pygame.Surface(screen.get_size())
 	background = background.convert()
-	
-	# Create rotation matrices for the camera
-	rotation_matrix_x = get_rotation_matrix_x(radians(CAMERA_ROT_X))
-	rotation_matrix_y = get_rotation_matrix_y(radians(CAMERA_ROT_Y))
 	
 	# Hide the mouse cursor and set the relative mode
 	capture_mouse = True
@@ -192,47 +263,61 @@ def main():
 		background.fill(Color("black"))  # Clear background at the top of the loop
 
 		# Load and draw objects
-		for i in get_object_names():
-			if not objects_loaded:
+		if not objects_loaded:
+			for i in get_object_names():
 				cubedict = load_cube(i)
 				cube = create_cube(cubedict[f"{i}Scale"])
-				# Store cube with initial position
 				cube_points_dict[i] = cube
 				draw_cube(background, (cubedict[f"{i}Red"], cubedict[f"{i}Green"], cubedict[f"{i}Blue"]), cube)
 				loaded_objects_list.append(i)
-				if loaded_objects_list == get_object_names():
+				if len(loaded_objects_list) == len(get_object_names()):
 					objects_loaded = True
 
-			if objects_loaded:
+		if objects_loaded:
+			for i in loaded_objects_list:
 				cubedict = load_cube(i)
 				cube = cube_points_dict[i]
-				# Apply object translation based on the loaded position
 				translated_cube = [(p[0] + cubedict[f"{i}X"], p[1] - cubedict[f"{i}Y"], p[2] - cubedict[f"{i}Z"]) for p in cube]
-
-				# Apply camera rotation to the cube
-				rotated_cube = apply_camera_rotation(translated_cube, rotation_matrix_x, rotation_matrix_y)
-
+				rotated_cube = apply_camera_rotation(translated_cube)
 				draw_cube(background, (cubedict[f"{i}Red"], cubedict[f"{i}Green"], cubedict[f"{i}Blue"]), rotated_cube)
+
+		
+		# Get camera direction
+		CameraDirection = get_camera_direction()
 
 		# Handle events
 		keys = pygame.key.get_pressed()
 		if keys[K_w] and enable_movement:
-			CAMERA_X -= move_speed * cos(radians(CAMERA_ROT_Y) + radians(CAMERA_ROT_X) + np.pi / 2)
-			CAMERA_Z -= move_speed * sin(radians(CAMERA_ROT_Y) + radians(CAMERA_ROT_X) + np.pi / 2)
+			CAMERA_X += (move_speed * cos(radians(CAMERA_ROT_Y) + radians(CAMERA_ROT_X) + CameraDirection["PIDivBy2"]) * CameraDirection["Forward"])
+			CAMERA_Z += (move_speed * sin(radians(CAMERA_ROT_Y) + radians(CAMERA_ROT_X) + CameraDirection["PIDivBy2"]) * CameraDirection["Forward"])
 		if keys[K_s] and enable_movement:
-			CAMERA_X += move_speed * cos(radians(CAMERA_ROT_Y) + radians(CAMERA_ROT_X) + np.pi / 2)
-			CAMERA_Z += move_speed * sin(radians(CAMERA_ROT_Y) + radians(CAMERA_ROT_X) + np.pi / 2)
+			CAMERA_X += (move_speed * cos(radians(CAMERA_ROT_Y) + radians(CAMERA_ROT_X) + CameraDirection["PIDivBy2"]) * CameraDirection["Back"])
+			CAMERA_Z += (move_speed * sin(radians(CAMERA_ROT_Y) + radians(CAMERA_ROT_X) + CameraDirection["PIDivBy2"]) * CameraDirection["Back"])
 		if keys[K_a] and enable_movement:
-			CAMERA_X += move_speed * cos(radians(CAMERA_ROT_Y) + radians(CAMERA_ROT_X))
-			CAMERA_Z += move_speed * sin(radians(CAMERA_ROT_Y) + radians(CAMERA_ROT_X))
+			CAMERA_X += (move_speed * cos(radians(CAMERA_ROT_Y) + radians(CAMERA_ROT_X) + CameraDirection["NotPIDivBy2"]) * CameraDirection["Left"])
+			CAMERA_Z += (move_speed * sin(radians(CAMERA_ROT_Y) + radians(CAMERA_ROT_X) + CameraDirection["NotPIDivBy2"]) * CameraDirection["Left"])
 		if keys[K_d] and enable_movement:
-			CAMERA_X -= move_speed * cos(radians(CAMERA_ROT_Y) + radians(CAMERA_ROT_X))
-			CAMERA_Z -= move_speed * sin(radians(CAMERA_ROT_Y) + radians(CAMERA_ROT_X))
+			CAMERA_X += (move_speed * cos(radians(CAMERA_ROT_Y) + radians(CAMERA_ROT_X) + CameraDirection["NotPIDivBy2"]) * CameraDirection["Right"])
+			CAMERA_Z += (move_speed * sin(radians(CAMERA_ROT_Y) + radians(CAMERA_ROT_X) + CameraDirection["NotPIDivBy2"]) * CameraDirection["Right"])
 
 		if keys[K_SPACE] and enable_movement:
-			CAMERA_Y += move_speed
+			if CameraDirection["Up"] == 1:
+				CAMERA_X += (move_speed * cos(radians(CAMERA_ROT_Y) + radians(CAMERA_ROT_X) + CameraDirection["PIDivBy2"]) * CameraDirection["Forward"])
+				CAMERA_Z += (move_speed * sin(radians(CAMERA_ROT_Y) + radians(CAMERA_ROT_X) + CameraDirection["PIDivBy2"]) * CameraDirection["Forward"])
+			elif CameraDirection["Up"] == -1:
+				CAMERA_X += (move_speed * cos(radians(CAMERA_ROT_Y) + radians(CAMERA_ROT_X) + CameraDirection["PIDivBy2"]) * CameraDirection["Back"])
+				CAMERA_Z += (move_speed * sin(radians(CAMERA_ROT_Y) + radians(CAMERA_ROT_X) + CameraDirection["PIDivBy2"]) * CameraDirection["Back"])
+			else:
+				CAMERA_Y += move_speed
 		if keys[K_LSHIFT] and enable_movement:
-			CAMERA_Y -= move_speed
+			if CameraDirection["Down"] == 1:
+				CAMERA_X += (move_speed * cos(radians(CAMERA_ROT_Y) + radians(CAMERA_ROT_X) + CameraDirection["PIDivBy2"]) * CameraDirection["Back"])
+				CAMERA_Z += (move_speed * sin(radians(CAMERA_ROT_Y) + radians(CAMERA_ROT_X) + CameraDirection["PIDivBy2"]) * CameraDirection["Back"])
+			elif CameraDirection["Up"] == -1:
+				CAMERA_X += (move_speed * cos(radians(CAMERA_ROT_Y) + radians(CAMERA_ROT_X) + CameraDirection["PIDivBy2"]) * CameraDirection["Forward"])
+				CAMERA_Z += (move_speed * sin(radians(CAMERA_ROT_Y) + radians(CAMERA_ROT_X) + CameraDirection["PIDivBy2"]) * CameraDirection["Forward"])
+			else:
+				CAMERA_Y -= move_speed
 		for event in pygame.event.get():
 			if event.type == KEYDOWN and event.key == K_ESCAPE:
 				# Hide the mouse cursor and set the relative mode
@@ -246,6 +331,11 @@ def main():
 				background = pygame.Surface(screen.get_size())
 				background = background.convert()
 			if event.type == KEYDOWN and event.key == K_r:
+				CAMERA_X = 0
+				CAMERA_Y = 0
+				CAMERA_Z = 0
+				CAMERA_ROT_X = 0
+				CAMERA_ROT_Y = 0
 				background.fill(Color("black"))
 				cube_points_dict.clear()
 				loaded_objects_list.clear()
@@ -271,10 +361,6 @@ def main():
 
 		# Constrain vertical rotation to avoid flipping the camera
 		CAMERA_ROT_X = max(-90, min(90, CAMERA_ROT_X))
-
-		# Update rotation matrices
-		rotation_matrix_x = get_rotation_matrix_x(radians(CAMERA_ROT_X))
-		rotation_matrix_y = get_rotation_matrix_y(radians(CAMERA_ROT_Y))
 
 		# Draw everything to the off-screen surface
 		screen.blit(background, (0, 0))

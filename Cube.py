@@ -166,7 +166,7 @@ def main():
 	ORIGINX = screen.get_width() / 2
 	ORIGINY = screen.get_height() / 2
 
-	enable_movement = False
+	enable_movement = True
 
 	objects_loaded = False
 	loaded_objects_list = []
@@ -217,17 +217,17 @@ def main():
 		# Handle events
 		keys = pygame.key.get_pressed()
 		if keys[K_w] and enable_movement:
-			CAMERA_X -= move_speed * cos(radians(CAMERA_ROT_Y) + np.pi / 2)
-			CAMERA_Z -= move_speed * sin(radians(CAMERA_ROT_Y) + np.pi / 2)
+			CAMERA_X -= move_speed * cos(radians(CAMERA_ROT_Y) + radians(CAMERA_ROT_X) + np.pi / 2)
+			CAMERA_Z -= move_speed * sin(radians(CAMERA_ROT_Y) + radians(CAMERA_ROT_X) + np.pi / 2)
 		if keys[K_s] and enable_movement:
-			CAMERA_X += move_speed * cos(radians(CAMERA_ROT_Y) + np.pi / 2)
-			CAMERA_Z += move_speed * sin(radians(CAMERA_ROT_Y) + np.pi / 2)
+			CAMERA_X += move_speed * cos(radians(CAMERA_ROT_Y) + radians(CAMERA_ROT_X) + np.pi / 2)
+			CAMERA_Z += move_speed * sin(radians(CAMERA_ROT_Y) + radians(CAMERA_ROT_X) + np.pi / 2)
 		if keys[K_a] and enable_movement:
-			CAMERA_X += move_speed * cos(radians(CAMERA_ROT_Y))
-			CAMERA_Z += move_speed * sin(radians(CAMERA_ROT_Y))
+			CAMERA_X += move_speed * cos(radians(CAMERA_ROT_Y) + radians(CAMERA_ROT_X))
+			CAMERA_Z += move_speed * sin(radians(CAMERA_ROT_Y) + radians(CAMERA_ROT_X))
 		if keys[K_d] and enable_movement:
-			CAMERA_X -= move_speed * cos(radians(CAMERA_ROT_Y))
-			CAMERA_Z -= move_speed * sin(radians(CAMERA_ROT_Y))
+			CAMERA_X -= move_speed * cos(radians(CAMERA_ROT_Y) + radians(CAMERA_ROT_X))
+			CAMERA_Z -= move_speed * sin(radians(CAMERA_ROT_Y) + radians(CAMERA_ROT_X))
 
 		if keys[K_SPACE] and enable_movement:
 			CAMERA_Y += move_speed

@@ -38,23 +38,55 @@ def load_cube(name):
 	return objectDict
 
 def draw_3dline(surface, color, a, b):
-	"""Convert 3D coordinates to 2D and draw line with perspective."""
-	perspective = 0.003  # Adjust this value to change perspective depth
+    """Convert 3D coordinates to 2D and draw line with perspective."""
+    perspective = 0.003  # Adjust this value to change perspective depth
+    near_plane = -322  # Distance of the near clipping plane
 
-	def apply_perspective(p):
-		"""Apply perspective to a 3D point."""
-		factor = 1 / (1 + (p[2] + CAMERA_Z) * perspective)
-		x = (p[0] + CAMERA_X) * factor
-		y = (p[1] + CAMERA_Y) * factor
-		return (x, y)
-	
-	a = apply_perspective(a)
-	b = apply_perspective(b)
-	
-	ax, ay = a[0] + ORIGINX, a[1] + ORIGINY
-	bx, by = b[0] + ORIGINX, b[1] + ORIGINY
-	
-	pygame.draw.line(surface, color, (ax, ay), (bx, by))
+    def apply_perspective(p):
+        """Apply perspective to a 3D point."""
+        z = p[2] + CAMERA_Z
+        if z < near_plane:
+            z = near_plane  # Clip to the near plane to prevent division by zero or negative values
+        factor = 1 / (1 + z * perspective)
+        x = (p[0] + CAMERA_X) * factor
+        y = (p[1] + CAMERA_Y) * factor
+        return (x, y)
+
+    def clip_to_near_plane(p1, p2):
+        """Clip line segment to the near plane."""
+        p1_z = p1[2] + CAMERA_Z
+        p2_z = p2[2] + CAMERA_Z
+        if p1_z < near_plane and p2_z < near_plane:
+            return None, None
+        if p1_z >= near_plane and p2_z >= near_plane:
+            return p1, p2
+        t = (near_plane - p1_z) / (p2_z - p1_z)
+        if p1_z < near_plane:
+            p1 = (
+                p1[0] + t * (p2[0] - p1[0]),
+                p1[1] + t * (p2[1] - p1[1]),
+                near_plane - CAMERA_Z
+            )
+        else:
+            p2 = (
+                p1[0] + t * (p2[0] - p1[0]),
+                p1[1] + t * (p2[1] - p1[1]),
+                near_plane - CAMERA_Z
+            )
+        return p1, p2
+
+    a, b = clip_to_near_plane(a, b)
+    if a is None or b is None:
+        return  # Both points are behind the near plane
+
+    a_perspective = apply_perspective(a)
+    b_perspective = apply_perspective(b)
+
+    ax, ay = a_perspective[0] + ORIGINX, a_perspective[1] + ORIGINY
+    bx, by = b_perspective[0] + ORIGINX, b_perspective[1] + ORIGINY
+
+    pygame.draw.line(surface, color, (ax, ay), (bx, by))
+
 
 def create_cube(Scale=50):
 	cube = [(-Scale,Scale,Scale),  (Scale,Scale,Scale),  (Scale,-Scale,Scale),  (-Scale,-Scale,Scale),

@@ -132,7 +132,7 @@ def main():
     screen = pygame.display.set_mode((1024, 640), pygame.RESIZABLE)
     ORIGIN_X, ORIGIN_Y = screen.get_width() / 2, screen.get_height() / 2
 
-    enable_movement = True
+    enable_movement = False
     objects_loaded = False
     loaded_objects_list = []
     cube_points_dict = {}

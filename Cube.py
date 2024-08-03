@@ -7,7 +7,7 @@ import json
 import os
 from math import sin, cos, radians
 
-#Window Width And Height
+# Window Width And Height
 WindowWidth = 1024
 WindowHeight = 640
 
@@ -18,8 +18,35 @@ ObjectsJSONPath = os.path.abspath("./objects/objects.json")
 CAMERA_X = 0
 CAMERA_Y = 0
 CAMERA_Z = 500
-CAMERA_ROT_X = 0
+CAMERA_ROT_X = -90
 CAMERA_ROT_Y = 0
+
+class Camera:
+    def __init__(self, position, rotation):
+        self.position = np.array(position, dtype=np.float32)
+        self.rotation = np.array(rotation, dtype=np.float32)
+        self.update_vectors()
+
+    def update_vectors(self):
+        yaw, pitch = radians(self.rotation[0]), radians(self.rotation[1])
+        self.forward = np.array([
+            cos(pitch) * cos(yaw),
+            sin(pitch),
+            cos(pitch) * sin(yaw)
+        ], dtype=np.float32)
+        self.right = np.array([
+            -sin(yaw),
+            0,
+            cos(yaw)
+        ], dtype=np.float32)
+        self.up = np.cross(self.right, self.forward)
+
+    def get_view_matrix(self):
+        return gluLookAt(
+            self.position[0], self.position[1], self.position[2],
+            self.position[0] + self.forward[0], self.position[1] + self.forward[1], self.position[2] + self.forward[2],
+            self.up[0], self.up[1], self.up[2]
+        )
 
 def load_json(file_path):
     with open(file_path) as f:
@@ -58,45 +85,9 @@ def draw_cube(cube_points):
         glVertex3fv(cube_points[end_index])
     glEnd()
 
-def rotate_3dpoint(point, angle, axis):
-    cos_angle, sin_angle = cos(angle), sin(angle)
-    x, y, z = point
-    return [
-        (cos_angle + (1 - cos_angle) * axis[0]**2) * x + ((1 - cos_angle) * axis[0] * axis[1] - axis[2] * sin_angle) * y + ((1 - cos_angle) * axis[0] * axis[2] + axis[1] * sin_angle) * z,
-        ((1 - cos_angle) * axis[0] * axis[1] + axis[2] * sin_angle) * x + (cos_angle + (1 - cos_angle) * axis[1]**2) * y + ((1 - cos_angle) * axis[1] * axis[2] - axis[0] * sin_angle) * z,
-        ((1 - cos_angle) * axis[0] * axis[2] - axis[1] * sin_angle) * x + ((1 - cos_angle) * axis[1] * axis[2] + axis[0] * sin_angle) * y + (cos_angle + (1 - cos_angle) * axis[2]**2) * z
-    ]
-
-def rotate_object(cube_points, angle, axis):
-    for i in range(len(cube_points)):
-        cube_points[i] = rotate_3dpoint(cube_points[i], angle, axis)
-
-def translate_object(cube_points, dx, dy, dz):
-    for i in range(len(cube_points)):
-        cube_points[i] = (cube_points[i][0] + dx, cube_points[i][1] + dy, cube_points[i][2] + dz)
-
-def get_rotation_matrix_x(angle):
-    return np.array([
-        [1, 0, 0],
-        [0, cos(angle), -sin(angle)],
-        [0, sin(angle), cos(angle)]
-    ])
-
-def get_rotation_matrix_y(angle):
-    return np.array([
-        [cos(angle), 0, sin(angle)],
-        [0, 1, 0],
-        [-sin(angle), 0, cos(angle)]
-    ])
-
-def get_camera_direction():
-    forward_vector = np.array([cos(radians(CAMERA_ROT_X + 90)), 0, sin(radians(CAMERA_ROT_X + 90))])
-    right_vector = np.array([cos(radians(CAMERA_ROT_X)), 0, sin(radians(CAMERA_ROT_X))])
-    up_vector = np.array([0, 1, 0])
-    return forward_vector, right_vector, up_vector
-
 def main():
     global CAMERA_X, CAMERA_Y, CAMERA_Z, CAMERA_ROT_X, CAMERA_ROT_Y, WindowWidth, WindowHeight
+
     pygame.init()
     pygame.display.set_mode((WindowWidth, WindowHeight), DOUBLEBUF | OPENGL | RESIZABLE)
 
@@ -107,6 +98,8 @@ def main():
     gluPerspective(45, (WindowWidth / WindowHeight), 0.1, 5000.0)
     glMatrixMode(GL_MODELVIEW)
     glEnable(GL_DEPTH_TEST)
+
+    camera = Camera([CAMERA_X, CAMERA_Y, CAMERA_Z], [CAMERA_ROT_X, CAMERA_ROT_Y])
 
     enable_movement = True
     objects_loaded = False
@@ -136,9 +129,7 @@ def main():
 
         if objects_loaded:
             glPushMatrix()
-            glTranslatef(-CAMERA_X, -CAMERA_Y, -CAMERA_Z)
-            glRotatef(CAMERA_ROT_X, 1, 0, 0)
-            glRotatef(CAMERA_ROT_Y, 0, 1, 0)
+            camera.get_view_matrix()
             glScalef(1, -1, -1)  # Flip the Y-axis
 
             for name in loaded_objects_list:
@@ -150,23 +141,18 @@ def main():
             glPopMatrix()
 
         keys = pygame.key.get_pressed()
-        forward_vector, right_vector, up_vector = get_camera_direction()
         if keys[K_w] and enable_movement:
-            CAMERA_X -= move_speed * forward_vector[0]
-            CAMERA_Z -= move_speed * forward_vector[2]
+            camera.position += move_speed * camera.forward
         if keys[K_s] and enable_movement:
-            CAMERA_X += move_speed * forward_vector[0]
-            CAMERA_Z += move_speed * forward_vector[2]
+            camera.position -= move_speed * camera.forward
         if keys[K_a] and enable_movement:
-            CAMERA_X -= move_speed * right_vector[0]
-            CAMERA_Z -= move_speed * right_vector[2]
+            camera.position -= move_speed * camera.right
         if keys[K_d] and enable_movement:
-            CAMERA_X += move_speed * right_vector[0]
-            CAMERA_Z += move_speed * right_vector[2]
+            camera.position += move_speed * camera.right
         if keys[K_SPACE] and enable_movement:
-            CAMERA_Y += move_speed * up_vector[1]
+            camera.position += move_speed * camera.up
         if keys[K_LSHIFT] and enable_movement:
-            CAMERA_Y -= move_speed * up_vector[1]
+            camera.position -= move_speed * camera.up
 
         for event in pygame.event.get():
             if event.type == KEYDOWN:
@@ -176,8 +162,8 @@ def main():
                     pygame.event.set_grab(not pygame.event.get_grab())
                     paused = not paused
                 if event.key == K_r:
-                    CAMERA_X, CAMERA_Y, CAMERA_Z = 0, 0, 500
-                    CAMERA_ROT_X, CAMERA_ROT_Y = 0, 0
+                    camera.position = np.array([CAMERA_X, CAMERA_Y, CAMERA_Z], dtype=np.float32)
+                    camera.rotation = np.array([CAMERA_ROT_X, CAMERA_ROT_Y], dtype=np.float32)
                     enable_movement = True
                     cube_points_dict.clear()
                     loaded_objects_list.clear()
@@ -197,10 +183,11 @@ def main():
                 glMatrixMode(GL_MODELVIEW)
 
         mouse_x, mouse_y = pygame.mouse.get_rel()
-        if paused != True:
-            CAMERA_ROT_Y += mouse_x * sensitivity
-            CAMERA_ROT_X += mouse_y * sensitivity
-            CAMERA_ROT_X = max(-90, min(90, CAMERA_ROT_X))
+        if not paused:
+            camera.rotation[0] += mouse_x * sensitivity
+            camera.rotation[1] -= mouse_y * sensitivity
+            camera.rotation[1] = max(-90, min(90, camera.rotation[1]))
+            camera.update_vectors()
 
         pygame.display.flip()
         pygame.time.delay(25)

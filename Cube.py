@@ -62,17 +62,24 @@ def load_cube(name):
         f"{name}_X": obj_data[0]["X"],
         f"{name}_Y": obj_data[0]["Y"],
         f"{name}_Z": obj_data[0]["Z"],
-        f"{name}_Scale": obj_data[0]["Scale"],
+        f"{name}_ScaleX": obj_data[0]["ScaleX"],
+        f"{name}_ScaleY": obj_data[0]["ScaleY"],
+        f"{name}_ScaleZ": obj_data[0]["ScaleZ"],
+        f"{name}_RotationX": obj_data[0]["RotationX"],
+        f"{name}_RotationY": obj_data[0]["RotationY"],
+        f"{name}_RotationZ": obj_data[0]["RotationZ"],
         f"{name}_Red": obj_data[0]["Red"],
         f"{name}_Green": obj_data[0]["Green"],
         f"{name}_Blue": obj_data[0]["Blue"],
         f"{name}_Alpha": obj_data[0]["Alpha"]
     }
 
-def create_cube(scale=1):
-    scale = scale * 50
-    return [(-scale, scale, scale), (scale, scale, scale), (scale, -scale, scale), (-scale, -scale, scale),
-            (-scale, scale, -scale), (scale, scale, -scale), (scale, -scale, -scale), (-scale, -scale, -scale)]
+def create_cube(scale_x=1, scale_y=1, scale_z=1):
+    scale_x = scale_x * 50
+    scale_y = scale_y * 50
+    scale_z = scale_z * 50
+    return [(-scale_x, scale_y, scale_z), (scale_x, scale_y, scale_z), (scale_x, -scale_y, scale_z), (-scale_x, -scale_y, scale_z),
+            (-scale_x, scale_y, -scale_z), (scale_x, scale_y, -scale_z), (scale_x, -scale_y, -scale_z), (-scale_x, -scale_y, -scale_z)]
 
 def draw_cube(cube_points, color):
     edges = [
@@ -127,7 +134,7 @@ def main():
             object_names = get_object_names()
             for name in object_names:
                 cube_data = load_cube(name)
-                cube_points = create_cube(cube_data[f"{name}_Scale"])
+                cube_points = create_cube(cube_data[f"{name}_ScaleX"], cube_data[f"{name}_ScaleY"], cube_data[f"{name}_ScaleZ"])
                 cube_points_dict[name] = cube_points
                 loaded_objects_list.append(name)
             if len(loaded_objects_list) == len(object_names):
@@ -148,7 +155,15 @@ def main():
                     cube_data[f"{name}_Blue"] / 255,
                     cube_data[f"{name}_Alpha"] / 255
                 )
+                # Apply cube rotation
+                glPushMatrix()
+                glTranslatef(cube_data[f"{name}_X"], -cube_data[f"{name}_Y"], -cube_data[f"{name}_Z"])
+                glRotatef(cube_data[f"{name}_RotationX"], 1, 0, 0)
+                glRotatef(cube_data[f"{name}_RotationY"], 0, 1, 0)
+                glRotatef(cube_data[f"{name}_RotationZ"], 0, 0, 1)
+                glTranslatef(-cube_data[f"{name}_X"], cube_data[f"{name}_Y"], cube_data[f"{name}_Z"])
                 draw_cube(translated_cube_points, color)
+                glPopMatrix()
             glPopMatrix()
 
         keys = pygame.key.get_pressed()

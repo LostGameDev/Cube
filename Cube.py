@@ -10,14 +10,18 @@ from pygame.locals import *
 # Paths
 ObjectsJSONPath = os.path.abspath("./objects/objects.json")
 
-# Constants
+# Origin
 ORIGIN_X = 0
 ORIGIN_Y = 0
+
+# Camera Transform
 CAMERA_X = 0
 CAMERA_Y = 0
 CAMERA_Z = 0
 CAMERA_ROT_X = 0
 CAMERA_ROT_Y = 0
+
+# Perspective and Near Plane
 PERSPECTIVE = 0.003
 NEAR_PLANE = -322
 

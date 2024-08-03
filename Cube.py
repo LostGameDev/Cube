@@ -76,7 +76,8 @@ def draw_3dline(surface, color, start_point, end_point):
                      (start_perspective[0] + ORIGIN_X, start_perspective[1] + ORIGIN_Y),
                      (end_perspective[0] + ORIGIN_X, end_perspective[1] + ORIGIN_Y))
 
-def create_cube(scale=50):
+def create_cube(scale=1):
+    scale = scale * 50
     return [(-scale, scale, scale), (scale, scale, scale), (scale, -scale, scale), (-scale, -scale, scale),
             (-scale, scale, -scale), (scale, scale, -scale), (scale, -scale, -scale), (-scale, -scale, -scale)]
 
@@ -193,10 +194,13 @@ def main():
                 if event.key == K_r:
                     CAMERA_X, CAMERA_Y, CAMERA_Z = 0, 0, 0
                     CAMERA_ROT_X, CAMERA_ROT_Y = 0, 0
+                    enable_movement = False
                     background.fill(Color("black"))
                     cube_points_dict.clear()
                     loaded_objects_list.clear()
                     objects_loaded = False
+                if event.key == K_u:
+                    enable_movement = not enable_movement
             if event.type == QUIT:
                 pygame.quit()
                 return

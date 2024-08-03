@@ -65,7 +65,8 @@ def load_cube(name):
         f"{name}_Scale": obj_data[0]["Scale"],
         f"{name}_Red": obj_data[0]["Red"],
         f"{name}_Green": obj_data[0]["Green"],
-        f"{name}_Blue": obj_data[0]["Blue"]
+        f"{name}_Blue": obj_data[0]["Blue"],
+        f"{name}_Alpha": obj_data[0]["Alpha"]
     }
 
 def create_cube(scale=1):
@@ -73,13 +74,14 @@ def create_cube(scale=1):
     return [(-scale, scale, scale), (scale, scale, scale), (scale, -scale, scale), (-scale, -scale, scale),
             (-scale, scale, -scale), (scale, scale, -scale), (scale, -scale, -scale), (-scale, -scale, -scale)]
 
-def draw_cube(cube_points):
+def draw_cube(cube_points, color):
     edges = [
         (0, 1), (1, 2), (2, 3), (3, 0),
         (4, 5), (5, 6), (6, 7), (7, 4),
         (0, 4), (1, 5), (2, 6), (3, 7)
     ]
     glBegin(GL_LINES)
+    glColor4f(*color)  # Use RGBA color
     for start_index, end_index in edges:
         glVertex3fv(cube_points[start_index])
         glVertex3fv(cube_points[end_index])
@@ -98,6 +100,10 @@ def main():
     gluPerspective(45, (WindowWidth / WindowHeight), 0.1, 5000.0)
     glMatrixMode(GL_MODELVIEW)
     glEnable(GL_DEPTH_TEST)
+
+    # Enable blending for transparency
+    glEnable(GL_BLEND)
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
 
     camera = Camera([CAMERA_X, CAMERA_Y, CAMERA_Z], [CAMERA_ROT_X, CAMERA_ROT_Y])
 
@@ -136,8 +142,13 @@ def main():
                 cube_data = load_cube(name)
                 cube_points = cube_points_dict[name]
                 translated_cube_points = [(p[0] + cube_data[f"{name}_X"], p[1] - cube_data[f"{name}_Y"], p[2] - cube_data[f"{name}_Z"]) for p in cube_points]
-                glColor3f(cube_data[f"{name}_Red"] / 255, cube_data[f"{name}_Green"] / 255, cube_data[f"{name}_Blue"] / 255)
-                draw_cube(translated_cube_points)
+                color = (
+                    cube_data[f"{name}_Red"] / 255,
+                    cube_data[f"{name}_Green"] / 255,
+                    cube_data[f"{name}_Blue"] / 255,
+                    cube_data[f"{name}_Alpha"] / 255
+                )
+                draw_cube(translated_cube_points, color)
             glPopMatrix()
 
         keys = pygame.key.get_pressed()

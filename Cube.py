@@ -3,8 +3,12 @@ import pygame.draw
 import pygame.time
 import numpy as np
 import json
+import os
 from math import sin, cos, radians
 from pygame.locals import *
+
+# Paths
+ObjectsJSONPath = os.path.abspath("./objects/objects.json")
 
 # Constants
 ORIGIN_X = 0
@@ -22,10 +26,10 @@ def load_json(file_path):
         return json.load(f)
 
 def get_object_names():
-    return list(load_json('./objects.json').keys())
+    return list(load_json(ObjectsJSONPath).keys())
 
 def load_cube(name):
-    data = load_json('./objects.json')
+    data = load_json(ObjectsJSONPath)
     obj_data = data[name]
     return {
         f"{name}_X": obj_data[0]["X"],

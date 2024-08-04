@@ -75,164 +75,200 @@ def load_cube(name):
 	}
 
 def create_cube(scale_x=1, scale_y=1, scale_z=1):
-	scale_x = scale_x * 50
-	scale_y = scale_y * 50
-	scale_z = scale_z * 50
-	return [(-scale_x, scale_y, scale_z), (scale_x, scale_y, scale_z), (scale_x, -scale_y, scale_z), (-scale_x, -scale_y, scale_z),
-			(-scale_x, scale_y, -scale_z), (scale_x, scale_y, -scale_z), (scale_x, -scale_y, -scale_z), (-scale_x, -scale_y, -scale_z)]
-
-def draw_cube(cube_points, color, wireframe_mode):
-	edges = [
-		(0, 1), (1, 2), (2, 3), (3, 0),
-		(4, 5), (5, 6), (6, 7), (7, 4),
-		(0, 4), (1, 5), (2, 6), (3, 7)
+	scale_x *= 50
+	scale_y *= 50
+	scale_z *= 50
+	vertices = [
+		(-scale_x, scale_y, scale_z), (scale_x, scale_y, scale_z), (scale_x, -scale_y, scale_z), (-scale_x, -scale_y, scale_z),
+		(-scale_x, scale_y, -scale_z), (scale_x, scale_y, -scale_z), (scale_x, -scale_y, -scale_z), (-scale_x, -scale_y, -scale_z)
 	]
-	quads = [
-		(0, 1, 2, 3),
-		(4, 5, 6, 7),
-		(0, 1, 5, 4),
-		(2, 3, 7, 6),
-		(1, 2, 6, 5),
-		(0, 3, 7, 4)
+	normals = [
+		(0, 0, 1), (0, 0, -1), (0, 1, 0), (0, -1, 0), (1, 0, 0), (-1, 0, 0)
 	]
+	# Normalize normals
+	normals = [np.array(n, dtype=np.float32) / np.linalg.norm(n) for n in normals]
+	return vertices, normals
 
-	if wireframe_mode:
-		glBegin(GL_LINES)
-		glColor4f(*color)  # Use RGBA color
-		for start_index, end_index in edges:
-			glVertex3fv(cube_points[start_index])
-			glVertex3fv(cube_points[end_index])
-		glEnd()
-	else:
-		glBegin(GL_QUADS)
-		glColor4f(*color)  # Use RGBA color
-		for quad in quads:
-			for vertex in quad:
-				glVertex3fv(cube_points[vertex])
-		glEnd()
+def draw_cube(cube_points, cube_normals, color, wireframe_mode):
+    edges = [
+        (0, 1), (1, 2), (2, 3), (3, 0),
+        (4, 5), (5, 6), (6, 7), (7, 4),
+        (0, 4), (1, 5), (2, 6), (3, 7)
+    ]
+    quads = [
+        (0, 1, 2, 3),
+        (4, 5, 6, 7),
+        (0, 1, 5, 4),
+        (2, 3, 7, 6),
+        (1, 2, 6, 5),
+        (0, 3, 7, 4)
+    ]
+    quad_normals = [
+        (0, 0, 1), (0, 0, -1), (0, 1, 0), (0, -1, 0), (1, 0, 0), (-1, 0, 0)
+    ]
+
+    if wireframe_mode:
+        glBegin(GL_LINES)
+        glColor4f(*color)  # Use RGBA color
+        for start_index, end_index in edges:
+            glVertex3fv(cube_points[start_index])
+            glVertex3fv(cube_points[end_index])
+        glEnd()
+    else:
+        glEnable(GL_COLOR_MATERIAL)
+        glBegin(GL_QUADS)
+        for i, quad in enumerate(quads):
+            glNormal3fv(quad_normals[i])  # Set the normal for the face
+            glColor4f(*color)  # Set color before drawing the vertices
+            for vertex in quad:
+                glVertex3fv(cube_points[vertex])
+        glEnd()
+        glDisable(GL_COLOR_MATERIAL)
+
+def setup_lighting():
+	glEnable(GL_LIGHTING)
+	glEnable(GL_LIGHT0)
+	glEnable(GL_COLOR_MATERIAL)
+	
+	# Set light properties
+	light_position = (1, 1, 1, 0)  # Directional light
+	light_diffuse = (0.8, 0.8, 0.8, 1)  # Dimmer diffuse light
+	light_specular = (1, 1, 1, 1)  # White specular light
+
+	glLightfv(GL_LIGHT0, GL_POSITION, light_position)
+	glLightfv(GL_LIGHT0, GL_DIFFUSE, light_diffuse)
+	glLightfv(GL_LIGHT0, GL_SPECULAR, light_specular)
+
+	# Set material properties
+	glMaterialfv(GL_FRONT, GL_AMBIENT_AND_DIFFUSE, (0.8, 0.8, 0.8, 1))  # Softer ambient and diffuse
+	glMaterialfv(GL_FRONT, GL_SPECULAR, (1, 1, 1, 1))
+	glMaterialf(GL_FRONT, GL_SHININESS, 30.0)  # Lower shininess
 
 def main():
-	global CAMERA_X, CAMERA_Y, CAMERA_Z, CAMERA_ROT_X, CAMERA_ROT_Y, WindowWidth, WindowHeight
+    global CAMERA_X, CAMERA_Y, CAMERA_Z, CAMERA_ROT_X, CAMERA_ROT_Y, WindowWidth, WindowHeight
 
-	pygame.init()
-	pygame.display.set_mode((WindowWidth, WindowHeight), DOUBLEBUF | OPENGL | RESIZABLE)
+    pygame.init()
+    pygame.display.set_mode((WindowWidth, WindowHeight), DOUBLEBUF | OPENGL | RESIZABLE)
 
-	# Initial OpenGL setup
-	glViewport(0, 0, WindowWidth, WindowHeight)
-	glMatrixMode(GL_PROJECTION)
-	glLoadIdentity()
-	gluPerspective(45, (WindowWidth / WindowHeight), 0.1, 5000.0)
-	glMatrixMode(GL_MODELVIEW)
-	glEnable(GL_DEPTH_TEST)
+    # Initial OpenGL setup
+    glViewport(0, 0, WindowWidth, WindowHeight)
+    glMatrixMode(GL_PROJECTION)
+    glLoadIdentity()
+    gluPerspective(45, (WindowWidth / WindowHeight), 0.1, 5000.0)
+    glMatrixMode(GL_MODELVIEW)
+    glEnable(GL_DEPTH_TEST)
 
-	# Enable blending for transparency
-	glEnable(GL_BLEND)
-	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
+    # Enable blending for transparency
+    glEnable(GL_BLEND)
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
 
-	camera = Camera([CAMERA_X, CAMERA_Y, CAMERA_Z], [CAMERA_ROT_X, CAMERA_ROT_Y])
-	
-	objects_loaded = False
-	loaded_objects_list = []
-	cube_points_dict = {}
+    camera = Camera([CAMERA_X, CAMERA_Y, CAMERA_Z], [CAMERA_ROT_X, CAMERA_ROT_Y])
+    
+    # Setup Lighting
+    setup_lighting()
 
-	pygame.mouse.set_visible(False)
-	pygame.event.set_grab(True)
+    objects_loaded = False
+    loaded_objects_list = []
+    cube_points_dict = {}
 
-	sensitivity = 0.1
-	move_speed = 5
-	wireframe_mode = False
-	paused = False
+    pygame.mouse.set_visible(False)
+    pygame.event.set_grab(True)
 
-	while True:
-		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
+    sensitivity = 0.1
+    move_speed = 5
+    wireframe_mode = False
+    paused = False
 
-		if not objects_loaded:
-			object_names = get_object_names()
-			for name in object_names:
-				cube_data = load_cube(name)
-				cube_points = create_cube(cube_data[f"{name}_ScaleX"], cube_data[f"{name}_ScaleY"], cube_data[f"{name}_ScaleZ"])
-				cube_points_dict[name] = cube_points
-				loaded_objects_list.append(name)
-			if len(loaded_objects_list) == len(object_names):
-				objects_loaded = True
+    while True:
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
 
-		if objects_loaded:
-			glPushMatrix()
-			camera.get_view_matrix()
-			glScalef(1, -1, -1)  # Flip the Y-axis
+        if not objects_loaded:
+            object_names = get_object_names()
+            for name in object_names:
+                cube_data = load_cube(name)
+                cube_points, cube_normals = create_cube(cube_data[f"{name}_ScaleX"], cube_data[f"{name}_ScaleY"], cube_data[f"{name}_ScaleZ"])
+                cube_points_dict[name] = (cube_points, cube_normals)
+                loaded_objects_list.append(name)
+            if len(loaded_objects_list) == len(object_names):
+                objects_loaded = True
 
-			for name in loaded_objects_list:
-				cube_data = load_cube(name)
-				cube_points = cube_points_dict[name]
-				translated_cube_points = [(p[0] + cube_data[f"{name}_X"], p[1] - cube_data[f"{name}_Y"], p[2] - cube_data[f"{name}_Z"]) for p in cube_points]
-				color = (
-					cube_data[f"{name}_Red"] / 255,
-					cube_data[f"{name}_Green"] / 255,
-					cube_data[f"{name}_Blue"] / 255,
-					cube_data[f"{name}_Alpha"] / 255
-				)
-				# Apply cube rotation
-				glPushMatrix()
-				glTranslatef(cube_data[f"{name}_X"], -cube_data[f"{name}_Y"], -cube_data[f"{name}_Z"])
-				glRotatef(cube_data[f"{name}_RotationX"], 1, 0, 0)
-				glRotatef(cube_data[f"{name}_RotationY"], 0, 1, 0)
-				glRotatef(cube_data[f"{name}_RotationZ"], 0, 0, 1)
-				glTranslatef(-cube_data[f"{name}_X"], cube_data[f"{name}_Y"], cube_data[f"{name}_Z"])
-				draw_cube(translated_cube_points, color, wireframe_mode)
-				glPopMatrix()
-			glPopMatrix()
+        if objects_loaded:
+            glPushMatrix()
+            camera.get_view_matrix()
+            glScalef(1, -1, -1)  # Flip the Y-axis
 
-		keys = pygame.key.get_pressed()
-		if keys[K_w]:
-			camera.position += move_speed * camera.forward
-		if keys[K_s]:
-			camera.position -= move_speed * camera.forward
-		if keys[K_a]:
-			camera.position -= move_speed * camera.right
-		if keys[K_d]:
-			camera.position += move_speed * camera.right
-		if keys[K_SPACE]:
-			camera.position += move_speed * camera.up
-		if keys[K_LSHIFT]:
-			camera.position -= move_speed * camera.up
+            for name in loaded_objects_list:
+                cube_data = load_cube(name)
+                cube_points, cube_normals = cube_points_dict[name]
+                translated_cube_points = [(p[0] + cube_data[f"{name}_X"], p[1] - cube_data[f"{name}_Y"], p[2] - cube_data[f"{name}_Z"]) for p in cube_points]
+                color = (
+                    cube_data[f"{name}_Red"] / 255,
+                    cube_data[f"{name}_Green"] / 255,
+                    cube_data[f"{name}_Blue"] / 255,
+                    cube_data[f"{name}_Alpha"] / 255
+                )
+                # Apply cube rotation
+                glPushMatrix()
+                glTranslatef(cube_data[f"{name}_X"], -cube_data[f"{name}_Y"], -cube_data[f"{name}_Z"])
+                glRotatef(cube_data[f"{name}_RotationX"], 1, 0, 0)
+                glRotatef(cube_data[f"{name}_RotationY"], 0, 1, 0)
+                glRotatef(cube_data[f"{name}_RotationZ"], 0, 0, 1)
+                glTranslatef(-cube_data[f"{name}_X"], cube_data[f"{name}_Y"], cube_data[f"{name}_Z"])
+                draw_cube(translated_cube_points, cube_normals, color, wireframe_mode)
+                glPopMatrix()
+            glPopMatrix()
 
-		for event in pygame.event.get():
-			if event.type == KEYDOWN:
-				if event.key == K_ESCAPE:
-					pygame.mouse.set_visible(not pygame.mouse.get_visible())
-					pygame.mouse.set_pos([WindowWidth / 2, WindowHeight / 2])
-					pygame.event.set_grab(not pygame.event.get_grab())
-					paused = not paused
-				if event.key == K_r:
-					camera.position = np.array([CAMERA_X, CAMERA_Y, CAMERA_Z], dtype=np.float32)
-					camera.rotation = np.array([CAMERA_ROT_X, CAMERA_ROT_Y], dtype=np.float32)
-					wireframe_mode = False
-					cube_points_dict.clear()
-					loaded_objects_list.clear()
-					objects_loaded = False
-				if event.key == K_t:
-					wireframe_mode = not wireframe_mode  # Toggle wireframe mode
-			if event.type == QUIT:
-				pygame.quit()
-				return
-			if event.type == VIDEORESIZE:
-				WindowWidth = event.w
-				WindowHeight = event.h
-				glViewport(0, 0, WindowWidth, WindowHeight)
-				glMatrixMode(GL_PROJECTION)
-				glLoadIdentity()
-				gluPerspective(45, (WindowWidth / WindowHeight), 0.1, 5000.0)
-				glMatrixMode(GL_MODELVIEW)
+        keys = pygame.key.get_pressed()
+        if keys[K_w]:
+            camera.position += move_speed * camera.forward
+        if keys[K_s]:
+            camera.position -= move_speed * camera.forward
+        if keys[K_a]:
+            camera.position -= move_speed * camera.right
+        if keys[K_d]:
+            camera.position += move_speed * camera.right
+        if keys[K_SPACE]:
+            camera.position += move_speed * camera.up
+        if keys[K_LSHIFT]:
+            camera.position -= move_speed * camera.up
 
-		mouse_x, mouse_y = pygame.mouse.get_rel()
-		if not paused:
-			camera.rotation[0] += mouse_x * sensitivity
-			camera.rotation[1] -= mouse_y * sensitivity
-			camera.rotation[1] = max(-90, min(90, camera.rotation[1]))
-			camera.update_vectors()
+        for event in pygame.event.get():
+            if event.type == KEYDOWN:
+                if event.key == K_ESCAPE:
+                    pygame.mouse.set_visible(not pygame.mouse.get_visible())
+                    pygame.mouse.set_pos([WindowWidth / 2, WindowHeight / 2])
+                    pygame.event.set_grab(not pygame.event.get_grab())
+                    paused = not paused
+                if event.key == K_r:
+                    camera.position = np.array([CAMERA_X, CAMERA_Y, CAMERA_Z], dtype=np.float32)
+                    camera.rotation = np.array([CAMERA_ROT_X, CAMERA_ROT_Y], dtype=np.float32)
+                    wireframe_mode = False
+                    cube_points_dict.clear()
+                    loaded_objects_list.clear()
+                    objects_loaded = False
+                if event.key == K_t:
+                    wireframe_mode = not wireframe_mode  # Toggle wireframe mode
+            if event.type == QUIT:
+                pygame.quit()
+                return
+            if event.type == VIDEORESIZE:
+                WindowWidth = event.w
+                WindowHeight = event.h
+                glViewport(0, 0, WindowWidth, WindowHeight)
+                glMatrixMode(GL_PROJECTION)
+                glLoadIdentity()
+                gluPerspective(45, (WindowWidth / WindowHeight), 0.1, 5000.0)
+                glMatrixMode(GL_MODELVIEW)
 
-		pygame.display.flip()
-		pygame.time.delay(25)
+        mouse_x, mouse_y = pygame.mouse.get_rel()
+        if not paused:
+            camera.rotation[0] += mouse_x * sensitivity
+            camera.rotation[1] -= mouse_y * sensitivity
+            camera.rotation[1] = max(-90, min(90, camera.rotation[1]))
+            camera.update_vectors()
+
+        pygame.display.flip()
+        pygame.time.delay(25)
 
 if __name__ == "__main__":
 	main()

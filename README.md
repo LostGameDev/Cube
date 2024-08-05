@@ -73,6 +73,7 @@ This example will create a green cube at 0, 0, 0 with default scale and with no 
     - `ESC`: Pause
     - `R`: Reset camera position and reload objects
     - `T`: Enable/disable wireframe mode
+    - `B`: Enable/disable lighting
 
 ## License
 

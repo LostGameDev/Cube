@@ -101,7 +101,7 @@ def create_cube(scale_x=1, scale_y=1, scale_z=1):
 	normals = [np.array(n, dtype=np.float32) / np.linalg.norm(n) for n in normals]
 	return vertices, normals
 
-def draw_cube(cube_points, cube_normals, color, wireframe_mode):
+def draw_cube(cube_points, cube_normals, color, wireframe_mode, fullbright):
 	edges = [
 		(0, 1), (1, 2), (2, 3), (3, 0),
 		(4, 5), (5, 6), (6, 7), (7, 4),
@@ -118,6 +118,7 @@ def draw_cube(cube_points, cube_normals, color, wireframe_mode):
 	]
 
 	if wireframe_mode:
+		glDisable(GL_LIGHTING)
 		glEnable(GL_COLOR_MATERIAL)
 		glBegin(GL_LINES)
 		glColor4f(*color)  # Use RGBA color
@@ -126,7 +127,10 @@ def draw_cube(cube_points, cube_normals, color, wireframe_mode):
 			glVertex3fv(cube_points[end_index])
 		glEnd()
 		glDisable(GL_COLOR_MATERIAL)
+		glEnable(GL_LIGHTING)
 	else:
+		if fullbright:
+			glDisable(GL_LIGHTING)
 		glEnable(GL_COLOR_MATERIAL)
 		glBegin(GL_QUADS)
 		for i, quad in enumerate(quads):
@@ -136,6 +140,8 @@ def draw_cube(cube_points, cube_normals, color, wireframe_mode):
 				glVertex3fv(cube_points[vertex])
 		glEnd()
 		glDisable(GL_COLOR_MATERIAL)
+		if fullbright:
+			glEnable(GL_LIGHTING)
 
 def setup_lighting():
 	glEnable(GL_LIGHTING)
@@ -193,6 +199,7 @@ def main():
 	sensitivity = 0.1
 	move_speed = 5
 	wireframe_mode = False
+	fullbright = False
 	paused = False
 
 	while True:
@@ -230,7 +237,7 @@ def main():
 				glRotatef(cube_data[f"{name}_RotationY"], 0, 1, 0)
 				glRotatef(cube_data[f"{name}_RotationZ"], 0, 0, 1)
 				glTranslatef(-cube_data[f"{name}_X"], cube_data[f"{name}_Y"], cube_data[f"{name}_Z"])
-				draw_cube(translated_cube_points, cube_normals, color, wireframe_mode)
+				draw_cube(translated_cube_points, cube_normals, color, wireframe_mode, fullbright)
 				glPopMatrix()
 			glPopMatrix()
 
@@ -264,6 +271,8 @@ def main():
 					objects_loaded = False
 				if event.key == K_t:
 					wireframe_mode = not wireframe_mode  # Toggle wireframe mode
+				if event.key == K_b:
+					fullbright = not fullbright
 			if event.type == QUIT:
 				pygame.quit()
 				return

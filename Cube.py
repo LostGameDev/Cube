@@ -162,6 +162,49 @@ def setup_lighting():
 	glMaterialfv(GL_FRONT, GL_SPECULAR, (1, 1, 1, 1))
 	glMaterialf(GL_FRONT, GL_SHININESS, 30.0)  # Lower shininess
 
+def movement(camera, move_speed, sensitivity, wireframe_mode, fullbright, cube_points_dict, loaded_objects_list, objects_loaded, paused):
+	keys = pygame.key.get_pressed()
+	if keys[K_w]:
+		camera.position += move_speed * camera.forward
+	if keys[K_s]:
+		camera.position -= move_speed * camera.forward
+	if keys[K_a]:
+		camera.position -= move_speed * camera.right
+	if keys[K_d]:
+		camera.position += move_speed * camera.right
+	if keys[K_SPACE]:
+		camera.position += move_speed * camera.up
+	if keys[K_LSHIFT]:
+		camera.position -= move_speed * camera.up
+
+	for event in pygame.event.get():
+		if event.type == KEYDOWN:
+			if event.key == K_ESCAPE:
+				paused = not paused
+				pygame.mouse.set_visible(paused)
+				pygame.event.set_grab(not paused)
+				pygame.mouse.set_pos([WindowWidth / 2, WindowHeight / 2])
+			if event.key == K_r:
+				camera.position = np.array([CAMERA_X, CAMERA_Y, CAMERA_Z], dtype=np.float32)
+				camera.rotation = np.array([CAMERA_ROT_X, CAMERA_ROT_Y], dtype=np.float32)
+				wireframe_mode = False
+				cube_points_dict.clear()
+				loaded_objects_list.clear()
+				objects_loaded = False
+			if event.key == K_t:
+				wireframe_mode = not wireframe_mode  # Toggle wireframe mode
+			if event.key == K_b:
+				fullbright = not fullbright
+
+	if not paused:
+		mouse_x, mouse_y = pygame.mouse.get_rel()
+		camera.rotation[0] += mouse_x * sensitivity
+		camera.rotation[1] -= mouse_y * sensitivity
+		camera.rotation[1] = max(-90, min(90, camera.rotation[1]))
+		camera.update_vectors()
+
+	return wireframe_mode, cube_points_dict, loaded_objects_list, objects_loaded, fullbright, paused
+
 def main():
 	global CAMERA_X, CAMERA_Y, CAMERA_Z, CAMERA_ROT_X, CAMERA_ROT_Y, WindowWidth, WindowHeight
 
@@ -275,38 +318,9 @@ def main():
 
 			glPopMatrix()
 
-		keys = pygame.key.get_pressed()
-		if keys[K_w]:
-			camera.position += move_speed * camera.forward
-		if keys[K_s]:
-			camera.position -= move_speed * camera.forward
-		if keys[K_a]:
-			camera.position -= move_speed * camera.right
-		if keys[K_d]:
-			camera.position += move_speed * camera.right
-		if keys[K_SPACE]:
-			camera.position += move_speed * camera.up
-		if keys[K_LSHIFT]:
-			camera.position -= move_speed * camera.up
+		wireframe_mode, cube_points_dict, loaded_objects_list, objects_loaded, fullbright, paused = movement(camera, move_speed, sensitivity, wireframe_mode, fullbright, cube_points_dict, loaded_objects_list, objects_loaded, paused)
 
 		for event in pygame.event.get():
-			if event.type == KEYDOWN:
-				if event.key == K_ESCAPE:
-					pygame.mouse.set_visible(not pygame.mouse.get_visible())
-					pygame.mouse.set_pos([WindowWidth / 2, WindowHeight / 2])
-					pygame.event.set_grab(not pygame.event.get_grab())
-					paused = not paused
-				if event.key == K_r:
-					camera.position = np.array([CAMERA_X, CAMERA_Y, CAMERA_Z], dtype=np.float32)
-					camera.rotation = np.array([CAMERA_ROT_X, CAMERA_ROT_Y], dtype=np.float32)
-					wireframe_mode = False
-					cube_points_dict.clear()
-					loaded_objects_list.clear()
-					objects_loaded = False
-				if event.key == K_t:
-					wireframe_mode = not wireframe_mode  # Toggle wireframe mode
-				if event.key == K_b:
-					fullbright = not fullbright
 			if event.type == QUIT:
 				pygame.quit()
 				return
@@ -318,13 +332,6 @@ def main():
 				glLoadIdentity()
 				gluPerspective(45, (WindowWidth / WindowHeight), 0.1, 5000.0)
 				glMatrixMode(GL_MODELVIEW)
-				
-		mouse_x, mouse_y = pygame.mouse.get_rel()
-		if not paused:
-			camera.rotation[0] += mouse_x * sensitivity
-			camera.rotation[1] -= mouse_y * sensitivity
-			camera.rotation[1] = max(-90, min(90, camera.rotation[1]))
-			camera.update_vectors()
 
 		pygame.display.flip()
 		pygame.time.wait(10)

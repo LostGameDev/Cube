@@ -162,7 +162,7 @@ def setup_lighting():
 	glMaterialfv(GL_FRONT, GL_SPECULAR, (1, 1, 1, 1))
 	glMaterialf(GL_FRONT, GL_SHININESS, 30.0)  # Lower shininess
 
-def movement(camera, move_speed, sensitivity, wireframe_mode, fullbright, cube_points_dict, loaded_objects_list, objects_loaded, paused):
+def event_handler(camera, move_speed, sensitivity, wireframe_mode, fullbright, cube_points_dict, loaded_objects_list, objects_loaded, paused, WindowWidth, WindowHeight, Quit):
 	keys = pygame.key.get_pressed()
 	if keys[K_w]:
 		camera.position += move_speed * camera.forward
@@ -195,6 +195,16 @@ def movement(camera, move_speed, sensitivity, wireframe_mode, fullbright, cube_p
 				wireframe_mode = not wireframe_mode  # Toggle wireframe mode
 			if event.key == K_b:
 				fullbright = not fullbright
+		if event.type == QUIT:
+			Quit = True
+		if event.type == VIDEORESIZE:
+			WindowWidth = event.w
+			WindowHeight = event.h
+			glViewport(0, 0, WindowWidth, WindowHeight)
+			glMatrixMode(GL_PROJECTION)
+			glLoadIdentity()
+			gluPerspective(45, (WindowWidth / WindowHeight), 0.1, 5000.0)
+			glMatrixMode(GL_MODELVIEW)
 
 	if not paused:
 		mouse_x, mouse_y = pygame.mouse.get_rel()
@@ -203,7 +213,7 @@ def movement(camera, move_speed, sensitivity, wireframe_mode, fullbright, cube_p
 		camera.rotation[1] = max(-90, min(90, camera.rotation[1]))
 		camera.update_vectors()
 
-	return wireframe_mode, cube_points_dict, loaded_objects_list, objects_loaded, fullbright, paused
+	return wireframe_mode, cube_points_dict, loaded_objects_list, objects_loaded, fullbright, paused, WindowWidth, WindowHeight, Quit
 
 def main():
 	global CAMERA_X, CAMERA_Y, CAMERA_Z, CAMERA_ROT_X, CAMERA_ROT_Y, WindowWidth, WindowHeight
@@ -244,6 +254,8 @@ def main():
 	wireframe_mode = False
 	fullbright = False
 	paused = False
+
+	Quit = False
 
 	while True:
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
@@ -318,20 +330,11 @@ def main():
 
 			glPopMatrix()
 
-		wireframe_mode, cube_points_dict, loaded_objects_list, objects_loaded, fullbright, paused = movement(camera, move_speed, sensitivity, wireframe_mode, fullbright, cube_points_dict, loaded_objects_list, objects_loaded, paused)
+		wireframe_mode, cube_points_dict, loaded_objects_list, objects_loaded, fullbright, paused, WindowWidth, WindowHeight, Quit = event_handler(camera, move_speed, sensitivity, wireframe_mode, fullbright, cube_points_dict, loaded_objects_list, objects_loaded, paused, WindowWidth, WindowHeight, Quit)
 
-		for event in pygame.event.get():
-			if event.type == QUIT:
-				pygame.quit()
-				return
-			if event.type == VIDEORESIZE:
-				WindowWidth = event.w
-				WindowHeight = event.h
-				glViewport(0, 0, WindowWidth, WindowHeight)
-				glMatrixMode(GL_PROJECTION)
-				glLoadIdentity()
-				gluPerspective(45, (WindowWidth / WindowHeight), 0.1, 5000.0)
-				glMatrixMode(GL_MODELVIEW)
+		if Quit:
+			pygame.quit()
+			return
 
 		pygame.display.flip()
 		pygame.time.wait(10)

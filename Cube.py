@@ -220,7 +220,19 @@ def main():
 			camera.get_view_matrix()
 			glScalef(1, -1, -1)  # Flip the Y-axis
 
+			opaque_objects = []
+			transparent_objects = []
+
 			for name in loaded_objects_list:
+				cube_data = load_cube(name)
+				alpha = cube_data[f"{name}_Alpha"] / 255
+				if alpha < 1.0:
+					transparent_objects.append((name, alpha))
+				else:
+					opaque_objects.append(name)
+
+			# Draw opaque objects first
+			for name in opaque_objects:
 				cube_data = load_cube(name)
 				cube_points, cube_normals = cube_points_dict[name]
 				translated_cube_points = [(p[0] + cube_data[f"{name}_X"], p[1] - cube_data[f"{name}_Y"], p[2] - cube_data[f"{name}_Z"]) for p in cube_points]
@@ -239,6 +251,28 @@ def main():
 				glTranslatef(-cube_data[f"{name}_X"], cube_data[f"{name}_Y"], cube_data[f"{name}_Z"])
 				draw_cube(translated_cube_points, cube_normals, color, wireframe_mode, fullbright)
 				glPopMatrix()
+
+			# Draw transparent objects
+			for name, alpha in sorted(transparent_objects, key=lambda x: -x[1]):  # Sort by alpha descending
+				cube_data = load_cube(name)
+				cube_points, cube_normals = cube_points_dict[name]
+				translated_cube_points = [(p[0] + cube_data[f"{name}_X"], p[1] - cube_data[f"{name}_Y"], p[2] - cube_data[f"{name}_Z"]) for p in cube_points]
+				color = (
+					cube_data[f"{name}_Red"] / 255,
+					cube_data[f"{name}_Green"] / 255,
+					cube_data[f"{name}_Blue"] / 255,
+					alpha
+				)
+				# Apply cube rotation
+				glPushMatrix()
+				glTranslatef(cube_data[f"{name}_X"], -cube_data[f"{name}_Y"], -cube_data[f"{name}_Z"])
+				glRotatef(cube_data[f"{name}_RotationX"], 1, 0, 0)
+				glRotatef(cube_data[f"{name}_RotationY"], 0, 1, 0)
+				glRotatef(cube_data[f"{name}_RotationZ"], 0, 0, 1)
+				glTranslatef(-cube_data[f"{name}_X"], cube_data[f"{name}_Y"], cube_data[f"{name}_Z"])
+				draw_cube(translated_cube_points, cube_normals, color, wireframe_mode, fullbright)
+				glPopMatrix()
+
 			glPopMatrix()
 
 		keys = pygame.key.get_pressed()
@@ -284,7 +318,7 @@ def main():
 				glLoadIdentity()
 				gluPerspective(45, (WindowWidth / WindowHeight), 0.1, 5000.0)
 				glMatrixMode(GL_MODELVIEW)
-
+				
 		mouse_x, mouse_y = pygame.mouse.get_rel()
 		if not paused:
 			camera.rotation[0] += mouse_x * sensitivity
@@ -293,7 +327,7 @@ def main():
 			camera.update_vectors()
 
 		pygame.display.flip()
-		pygame.time.delay(25)
+		pygame.time.wait(10)
 
 if __name__ == "__main__":
 	main()

@@ -121,7 +121,7 @@ def draw_cube(cube_points, cube_normals, color, wireframe_mode, fullbright):
 		glDisable(GL_LIGHTING)
 		glEnable(GL_COLOR_MATERIAL)
 		glBegin(GL_LINES)
-		glColor4f(*color)  # Use RGBA color
+		glColor3f(color[0], color[1], color[2])  # Use RGB color
 		for start_index, end_index in edges:
 			glVertex3fv(cube_points[start_index])
 			glVertex3fv(cube_points[end_index])

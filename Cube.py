@@ -299,7 +299,10 @@ def main():
 				cube_data = load_cube(name)
 				alpha = cube_data[f"{name}_Alpha"] / 255
 				if alpha < 1.0:
-					transparent_objects.append((name, alpha))
+					# Calculate distance from camera to object
+					cube_center = np.array([cube_data[f"{name}_X"], -cube_data[f"{name}_Y"], -cube_data[f"{name}_Z"]])
+					distance = np.linalg.norm(cube_center - state.camera.position)
+					transparent_objects.append((name, distance))
 				else:
 					opaque_objects.append(name)
 
@@ -324,8 +327,11 @@ def main():
 				draw_cube(translated_cube_points, cube_normals, color, state.wireframe_mode, state.fullbright)
 				glPopMatrix()
 
+			# Sort transparent objects by distance (furthest first)
+			transparent_objects.sort(key=lambda x: x[1], reverse=True)
+
 			# Draw transparent objects
-			for name, alpha in sorted(transparent_objects, key=lambda x: -x[1]):  # Sort by alpha descending
+			for name, _ in transparent_objects:
 				cube_data = load_cube(name)
 				cube_points, cube_normals = state.cube_points_dict[name]
 				translated_cube_points = [(p[0] + cube_data[f"{name}_X"], p[1] - cube_data[f"{name}_Y"], p[2] - cube_data[f"{name}_Z"]) for p in cube_points]
@@ -333,7 +339,7 @@ def main():
 					cube_data[f"{name}_Red"] / 255,
 					cube_data[f"{name}_Green"] / 255,
 					cube_data[f"{name}_Blue"] / 255,
-					alpha
+					cube_data[f"{name}_Alpha"] / 255
 				)
 				# Apply cube rotation
 				glPushMatrix()

@@ -162,58 +162,72 @@ def setup_lighting():
 	glMaterialfv(GL_FRONT, GL_SPECULAR, (1, 1, 1, 1))
 	glMaterialf(GL_FRONT, GL_SHININESS, 30.0)  # Lower shininess
 
-def event_handler(camera, move_speed, sensitivity, wireframe_mode, fullbright, cube_points_dict, loaded_objects_list, objects_loaded, paused, WindowWidth, WindowHeight, Quit):
+class State:
+	def __init__(self, camera, move_speed, sensitivity, wireframe_mode, fullbright, cube_points_dict, loaded_objects_list, objects_loaded, paused, WindowWidth, WindowHeight, Quit):
+		self.camera = camera
+		self.move_speed = move_speed
+		self.sensitivity = sensitivity
+		self.wireframe_mode = wireframe_mode
+		self.fullbright = fullbright
+		self.cube_points_dict = cube_points_dict
+		self.loaded_objects_list = loaded_objects_list
+		self.objects_loaded = objects_loaded
+		self.paused = paused
+		self.WindowWidth = WindowWidth
+		self.WindowHeight = WindowHeight
+		self.Quit = Quit
+
+def event_handler(state):
 	keys = pygame.key.get_pressed()
 	if keys[K_w]:
-		camera.position += move_speed * camera.forward
+		state.camera.position += state.move_speed * state.camera.forward
 	if keys[K_s]:
-		camera.position -= move_speed * camera.forward
+		state.camera.position -= state.move_speed * state.camera.forward
 	if keys[K_a]:
-		camera.position -= move_speed * camera.right
+		state.camera.position -= state.move_speed * state.camera.right
 	if keys[K_d]:
-		camera.position += move_speed * camera.right
+		state.camera.position += state.move_speed * state.camera.right
 	if keys[K_SPACE]:
-		camera.position += move_speed * camera.up
+		state.camera.position += state.move_speed * state.camera.up
 	if keys[K_LSHIFT]:
-		camera.position -= move_speed * camera.up
+		state.camera.position -= state.move_speed * state.camera.up
 
 	for event in pygame.event.get():
 		if event.type == KEYDOWN:
 			if event.key == K_ESCAPE:
-				paused = not paused
-				pygame.mouse.set_visible(paused)
-				pygame.event.set_grab(not paused)
-				pygame.mouse.set_pos([WindowWidth / 2, WindowHeight / 2])
+				state.paused = not state.paused
+				pygame.mouse.set_visible(state.paused)
+				pygame.event.set_grab(not state.paused)
+				pygame.mouse.set_pos([state.WindowWidth / 2, state.WindowHeight / 2])
 			if event.key == K_r:
-				camera.position = np.array([CAMERA_X, CAMERA_Y, CAMERA_Z], dtype=np.float32)
-				camera.rotation = np.array([CAMERA_ROT_X, CAMERA_ROT_Y], dtype=np.float32)
-				wireframe_mode = False
-				cube_points_dict.clear()
-				loaded_objects_list.clear()
-				objects_loaded = False
+				state.camera.position = np.array([CAMERA_X, CAMERA_Y, CAMERA_Z], dtype=np.float32)
+				state.camera.rotation = np.array([CAMERA_ROT_X, CAMERA_ROT_Y], dtype=np.float32)
+				state.wireframe_mode = False
+				state.fullbright = False
+				state.cube_points_dict.clear()
+				state.loaded_objects_list.clear()
+				state.objects_loaded = False
 			if event.key == K_t:
-				wireframe_mode = not wireframe_mode  # Toggle wireframe mode
+				state.wireframe_mode = not state.wireframe_mode  # Toggle wireframe mode
 			if event.key == K_b:
-				fullbright = not fullbright
+				state.fullbright = not state.fullbright
 		if event.type == QUIT:
-			Quit = True
+			state.Quit = True
 		if event.type == VIDEORESIZE:
-			WindowWidth = event.w
-			WindowHeight = event.h
-			glViewport(0, 0, WindowWidth, WindowHeight)
+			state.WindowWidth = event.w
+			state.WindowHeight = event.h
+			glViewport(0, 0, state.WindowWidth, state.WindowHeight)
 			glMatrixMode(GL_PROJECTION)
 			glLoadIdentity()
-			gluPerspective(45, (WindowWidth / WindowHeight), 0.1, 5000.0)
+			gluPerspective(45, (state.WindowWidth / state.WindowHeight), 0.1, 5000.0)
 			glMatrixMode(GL_MODELVIEW)
 
-	if not paused:
+	if not state.paused:
 		mouse_x, mouse_y = pygame.mouse.get_rel()
-		camera.rotation[0] += mouse_x * sensitivity
-		camera.rotation[1] -= mouse_y * sensitivity
-		camera.rotation[1] = max(-90, min(90, camera.rotation[1]))
-		camera.update_vectors()
-
-	return wireframe_mode, cube_points_dict, loaded_objects_list, objects_loaded, fullbright, paused, WindowWidth, WindowHeight, Quit
+		state.camera.rotation[0] += mouse_x * state.sensitivity
+		state.camera.rotation[1] -= mouse_y * state.sensitivity
+		state.camera.rotation[1] = max(-90, min(90, state.camera.rotation[1]))
+		state.camera.update_vectors()
 
 def main():
 	global CAMERA_X, CAMERA_Y, CAMERA_Z, CAMERA_ROT_X, CAMERA_ROT_Y, WindowWidth, WindowHeight
@@ -242,43 +256,46 @@ def main():
 	# Setup Lighting
 	setup_lighting()
 
-	objects_loaded = False
-	loaded_objects_list = []
-	cube_points_dict = {}
+	state = State(
+		camera=camera,
+		move_speed=5,
+		sensitivity=0.1,
+		wireframe_mode=False,
+		fullbright=False,
+		cube_points_dict={},
+		loaded_objects_list=[],
+		objects_loaded=False,
+		paused=False,
+		WindowWidth=WindowWidth,
+		WindowHeight=WindowHeight,
+		Quit=False
+	)
 
 	pygame.mouse.set_visible(False)
 	pygame.event.set_grab(True)
 
-	sensitivity = 0.1
-	move_speed = 5
-	wireframe_mode = False
-	fullbright = False
-	paused = False
-
-	Quit = False
-
 	while True:
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
 
-		if not objects_loaded:
+		if not state.objects_loaded:
 			object_names = get_object_names()
 			for name in object_names:
 				cube_data = load_cube(name)
 				cube_points, cube_normals = create_cube(cube_data[f"{name}_ScaleX"], cube_data[f"{name}_ScaleY"], cube_data[f"{name}_ScaleZ"])
-				cube_points_dict[name] = (cube_points, cube_normals)
-				loaded_objects_list.append(name)
-			if len(loaded_objects_list) == len(object_names):
-				objects_loaded = True
+				state.cube_points_dict[name] = (cube_points, cube_normals)
+				state.loaded_objects_list.append(name)
+			if len(state.loaded_objects_list) == len(object_names):
+				state.objects_loaded = True
 
-		if objects_loaded:
+		if state.objects_loaded:
 			glPushMatrix()
-			camera.get_view_matrix()
+			state.camera.get_view_matrix()
 			glScalef(1, -1, -1)  # Flip the Y-axis
 
 			opaque_objects = []
 			transparent_objects = []
 
-			for name in loaded_objects_list:
+			for name in state.loaded_objects_list:
 				cube_data = load_cube(name)
 				alpha = cube_data[f"{name}_Alpha"] / 255
 				if alpha < 1.0:
@@ -289,7 +306,7 @@ def main():
 			# Draw opaque objects first
 			for name in opaque_objects:
 				cube_data = load_cube(name)
-				cube_points, cube_normals = cube_points_dict[name]
+				cube_points, cube_normals = state.cube_points_dict[name]
 				translated_cube_points = [(p[0] + cube_data[f"{name}_X"], p[1] - cube_data[f"{name}_Y"], p[2] - cube_data[f"{name}_Z"]) for p in cube_points]
 				color = (
 					cube_data[f"{name}_Red"] / 255,
@@ -304,13 +321,13 @@ def main():
 				glRotatef(cube_data[f"{name}_RotationY"], 0, 1, 0)
 				glRotatef(cube_data[f"{name}_RotationZ"], 0, 0, 1)
 				glTranslatef(-cube_data[f"{name}_X"], cube_data[f"{name}_Y"], cube_data[f"{name}_Z"])
-				draw_cube(translated_cube_points, cube_normals, color, wireframe_mode, fullbright)
+				draw_cube(translated_cube_points, cube_normals, color, state.wireframe_mode, state.fullbright)
 				glPopMatrix()
 
 			# Draw transparent objects
 			for name, alpha in sorted(transparent_objects, key=lambda x: -x[1]):  # Sort by alpha descending
 				cube_data = load_cube(name)
-				cube_points, cube_normals = cube_points_dict[name]
+				cube_points, cube_normals = state.cube_points_dict[name]
 				translated_cube_points = [(p[0] + cube_data[f"{name}_X"], p[1] - cube_data[f"{name}_Y"], p[2] - cube_data[f"{name}_Z"]) for p in cube_points]
 				color = (
 					cube_data[f"{name}_Red"] / 255,
@@ -325,14 +342,14 @@ def main():
 				glRotatef(cube_data[f"{name}_RotationY"], 0, 1, 0)
 				glRotatef(cube_data[f"{name}_RotationZ"], 0, 0, 1)
 				glTranslatef(-cube_data[f"{name}_X"], cube_data[f"{name}_Y"], cube_data[f"{name}_Z"])
-				draw_cube(translated_cube_points, cube_normals, color, wireframe_mode, fullbright)
+				draw_cube(translated_cube_points, cube_normals, color, state.wireframe_mode, state.fullbright)
 				glPopMatrix()
 
 			glPopMatrix()
 
-		wireframe_mode, cube_points_dict, loaded_objects_list, objects_loaded, fullbright, paused, WindowWidth, WindowHeight, Quit = event_handler(camera, move_speed, sensitivity, wireframe_mode, fullbright, cube_points_dict, loaded_objects_list, objects_loaded, paused, WindowWidth, WindowHeight, Quit)
+		event_handler(state)
 
-		if Quit:
+		if state.Quit:
 			pygame.quit()
 			return
 

@@ -52,8 +52,9 @@ This project is a 3D cube renderer built using Pygame and PyOpenGL. It allows fo
                 "Alpha": 255
             }
         ]
+    }
     ```
-This example will create a green cube at 0, 0, 0 with default scale and with no rotation with the name ObjectName.
+This example will create a green opaque cube at 0, 0, 0 with default scale and with no rotation with the name ObjectName.
 
 2. Run the `main.py` script:
 

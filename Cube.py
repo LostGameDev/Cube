@@ -229,31 +229,102 @@ def event_handler(state):
 		state.camera.rotation[1] = max(-90, min(90, state.camera.rotation[1]))
 		state.camera.update_vectors()
 
+def load_objects(state):
+	if not state.objects_loaded:
+		object_names = get_object_names()
+		for name in object_names:
+			cube_data = load_cube(name)
+			cube_points, cube_normals = create_cube(cube_data[f"{name}_ScaleX"], cube_data[f"{name}_ScaleY"], cube_data[f"{name}_ScaleZ"])
+			state.cube_points_dict[name] = (cube_points, cube_normals)
+			state.loaded_objects_list.append(name)
+		if len(state.loaded_objects_list) == len(object_names):
+			state.objects_loaded = True
+
+def draw_objects(state):
+	glPushMatrix()
+	state.camera.get_view_matrix()
+	glScalef(1, -1, -1)  # Flip the Y-axis
+
+	opaque_objects = []
+	transparent_objects = []
+
+	for name in state.loaded_objects_list:
+		cube_data = load_cube(name)
+		alpha = cube_data[f"{name}_Alpha"] / 255
+		if alpha < 1.0:
+			# Calculate distance from camera to object
+			cube_center = np.array([cube_data[f"{name}_X"], -cube_data[f"{name}_Y"], -cube_data[f"{name}_Z"]])
+			distance = np.linalg.norm(cube_center - state.camera.position)
+			transparent_objects.append((name, distance))
+		else:
+			opaque_objects.append(name)
+
+	# Draw opaque objects first
+	for name in opaque_objects:
+		cube_data = load_cube(name)
+		cube_points, cube_normals = state.cube_points_dict[name]
+		translated_cube_points = [(p[0] + cube_data[f"{name}_X"], p[1] - cube_data[f"{name}_Y"], p[2] - cube_data[f"{name}_Z"]) for p in cube_points]
+		color = (
+			cube_data[f"{name}_Red"] / 255,
+			cube_data[f"{name}_Green"] / 255,
+			cube_data[f"{name}_Blue"] / 255,
+			cube_data[f"{name}_Alpha"] / 255
+		)
+		# Apply cube rotation
+		glPushMatrix()
+		glTranslatef(cube_data[f"{name}_X"], -cube_data[f"{name}_Y"], -cube_data[f"{name}_Z"])
+		glRotatef(cube_data[f"{name}_RotationX"], 1, 0, 0)
+		glRotatef(cube_data[f"{name}_RotationY"], 0, 1, 0)
+		glRotatef(cube_data[f"{name}_RotationZ"], 0, 0, 1)
+		glTranslatef(-cube_data[f"{name}_X"], cube_data[f"{name}_Y"], cube_data[f"{name}_Z"])
+		draw_cube(translated_cube_points, cube_normals, color, state.wireframe_mode, state.fullbright)
+		glPopMatrix()
+
+	# Sort transparent objects by distance (furthest first)
+	transparent_objects.sort(key=lambda x: x[1], reverse=True)
+
+	# Draw transparent objects
+	for name, _ in transparent_objects:
+		cube_data = load_cube(name)
+		cube_points, cube_normals = state.cube_points_dict[name]
+		translated_cube_points = [(p[0] + cube_data[f"{name}_X"], p[1] - cube_data[f"{name}_Y"], p[2] - cube_data[f"{name}_Z"]) for p in cube_points]
+		color = (
+			cube_data[f"{name}_Red"] / 255,
+			cube_data[f"{name}_Green"] / 255,
+			cube_data[f"{name}_Blue"] / 255,
+			cube_data[f"{name}_Alpha"] / 255
+		)
+		# Apply cube rotation
+		glPushMatrix()
+		glTranslatef(cube_data[f"{name}_X"], -cube_data[f"{name}_Y"], -cube_data[f"{name}_Z"])
+		glRotatef(cube_data[f"{name}_RotationX"], 1, 0, 0)
+		glRotatef(cube_data[f"{name}_RotationY"], 0, 1, 0)
+		glRotatef(cube_data[f"{name}_RotationZ"], 0, 0, 1)
+		glTranslatef(-cube_data[f"{name}_X"], cube_data[f"{name}_Y"], cube_data[f"{name}_Z"])
+		draw_cube(translated_cube_points, cube_normals, color, state.wireframe_mode, state.fullbright)
+		glPopMatrix()
+
+	glPopMatrix()
+
 def main():
+	# Initial setup
 	global CAMERA_X, CAMERA_Y, CAMERA_Z, CAMERA_ROT_X, CAMERA_ROT_Y, WindowWidth, WindowHeight
 
 	pygame.init()
 	pygame.display.set_mode((WindowWidth, WindowHeight), DOUBLEBUF | OPENGL | RESIZABLE)
 
-	# Initial OpenGL setup
 	glViewport(0, 0, WindowWidth, WindowHeight)
 	glMatrixMode(GL_PROJECTION)
 	glLoadIdentity()
 	gluPerspective(45, (WindowWidth / WindowHeight), 0.1, 5000.0)
 	glMatrixMode(GL_MODELVIEW)
 	glEnable(GL_DEPTH_TEST)
-	
-	# Enable blending for transparency
 	glEnable(GL_BLEND)
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
-
-	# Enable back-face culling
 	glEnable(GL_CULL_FACE)
 	glCullFace(GL_BACK)
 
 	camera = Camera([CAMERA_X, CAMERA_Y, CAMERA_Z], [CAMERA_ROT_X, CAMERA_ROT_Y])
-	
-	# Setup Lighting
 	setup_lighting()
 
 	state = State(
@@ -277,81 +348,9 @@ def main():
 	while True:
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
 
-		if not state.objects_loaded:
-			object_names = get_object_names()
-			for name in object_names:
-				cube_data = load_cube(name)
-				cube_points, cube_normals = create_cube(cube_data[f"{name}_ScaleX"], cube_data[f"{name}_ScaleY"], cube_data[f"{name}_ScaleZ"])
-				state.cube_points_dict[name] = (cube_points, cube_normals)
-				state.loaded_objects_list.append(name)
-			if len(state.loaded_objects_list) == len(object_names):
-				state.objects_loaded = True
-
+		load_objects(state)
 		if state.objects_loaded:
-			glPushMatrix()
-			state.camera.get_view_matrix()
-			glScalef(1, -1, -1)  # Flip the Y-axis
-
-			opaque_objects = []
-			transparent_objects = []
-
-			for name in state.loaded_objects_list:
-				cube_data = load_cube(name)
-				alpha = cube_data[f"{name}_Alpha"] / 255
-				if alpha < 1.0:
-					# Calculate distance from camera to object
-					cube_center = np.array([cube_data[f"{name}_X"], -cube_data[f"{name}_Y"], -cube_data[f"{name}_Z"]])
-					distance = np.linalg.norm(cube_center - state.camera.position)
-					transparent_objects.append((name, distance))
-				else:
-					opaque_objects.append(name)
-
-			# Draw opaque objects first
-			for name in opaque_objects:
-				cube_data = load_cube(name)
-				cube_points, cube_normals = state.cube_points_dict[name]
-				translated_cube_points = [(p[0] + cube_data[f"{name}_X"], p[1] - cube_data[f"{name}_Y"], p[2] - cube_data[f"{name}_Z"]) for p in cube_points]
-				color = (
-					cube_data[f"{name}_Red"] / 255,
-					cube_data[f"{name}_Green"] / 255,
-					cube_data[f"{name}_Blue"] / 255,
-					cube_data[f"{name}_Alpha"] / 255
-				)
-				# Apply cube rotation
-				glPushMatrix()
-				glTranslatef(cube_data[f"{name}_X"], -cube_data[f"{name}_Y"], -cube_data[f"{name}_Z"])
-				glRotatef(cube_data[f"{name}_RotationX"], 1, 0, 0)
-				glRotatef(cube_data[f"{name}_RotationY"], 0, 1, 0)
-				glRotatef(cube_data[f"{name}_RotationZ"], 0, 0, 1)
-				glTranslatef(-cube_data[f"{name}_X"], cube_data[f"{name}_Y"], cube_data[f"{name}_Z"])
-				draw_cube(translated_cube_points, cube_normals, color, state.wireframe_mode, state.fullbright)
-				glPopMatrix()
-
-			# Sort transparent objects by distance (furthest first)
-			transparent_objects.sort(key=lambda x: x[1], reverse=True)
-
-			# Draw transparent objects
-			for name, _ in transparent_objects:
-				cube_data = load_cube(name)
-				cube_points, cube_normals = state.cube_points_dict[name]
-				translated_cube_points = [(p[0] + cube_data[f"{name}_X"], p[1] - cube_data[f"{name}_Y"], p[2] - cube_data[f"{name}_Z"]) for p in cube_points]
-				color = (
-					cube_data[f"{name}_Red"] / 255,
-					cube_data[f"{name}_Green"] / 255,
-					cube_data[f"{name}_Blue"] / 255,
-					cube_data[f"{name}_Alpha"] / 255
-				)
-				# Apply cube rotation
-				glPushMatrix()
-				glTranslatef(cube_data[f"{name}_X"], -cube_data[f"{name}_Y"], -cube_data[f"{name}_Z"])
-				glRotatef(cube_data[f"{name}_RotationX"], 1, 0, 0)
-				glRotatef(cube_data[f"{name}_RotationY"], 0, 1, 0)
-				glRotatef(cube_data[f"{name}_RotationZ"], 0, 0, 1)
-				glTranslatef(-cube_data[f"{name}_X"], cube_data[f"{name}_Y"], cube_data[f"{name}_Z"])
-				draw_cube(translated_cube_points, cube_normals, color, state.wireframe_mode, state.fullbright)
-				glPopMatrix()
-
-			glPopMatrix()
+			draw_objects(state)
 
 		event_handler(state)
 

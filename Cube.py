@@ -179,18 +179,23 @@ class State:
 
 def event_handler(state):
 	keys = pygame.key.get_pressed()
+	
+	# Separate the horizontal (XZ plane) movement from the forward vector
+	horizontal_forward = np.array([state.camera.forward[0], 0, state.camera.forward[2]], dtype=np.float32)
+	horizontal_forward /= np.linalg.norm(horizontal_forward)  # Normalize the vector
+	
 	if keys[K_w]:
-		state.camera.position += state.move_speed * state.camera.forward
+		state.camera.position += state.move_speed * horizontal_forward
 	if keys[K_s]:
-		state.camera.position -= state.move_speed * state.camera.forward
+		state.camera.position -= state.move_speed * horizontal_forward
 	if keys[K_a]:
 		state.camera.position -= state.move_speed * state.camera.right
 	if keys[K_d]:
 		state.camera.position += state.move_speed * state.camera.right
 	if keys[K_SPACE]:
-		state.camera.position += state.move_speed * state.camera.up
+		state.camera.position[1] += state.move_speed # Move up along the Y-axis
 	if keys[K_LSHIFT]:
-		state.camera.position -= state.move_speed * state.camera.up
+		state.camera.position[1] -= state.move_speed # Move down along the Y-axis
 
 	for event in pygame.event.get():
 		if event.type == KEYDOWN:

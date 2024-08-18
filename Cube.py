@@ -1,3 +1,4 @@
+import sys
 import pygame
 from pygame.locals import *
 from OpenGL.GL import *
@@ -11,8 +12,11 @@ from math import sin, cos, radians
 WindowWidth = 1024
 WindowHeight = 640
 
-# Paths
-ObjectsJSONPath = os.path.abspath("./objects/objects.json")
+bundle_dir = getattr(sys, '_MEIPASS', os.path.abspath(os.path.dirname(__file__)))
+ObjectsJSONPath = os.path.abspath(os.path.join(".", "objects", "objects.json"))
+
+# Icon
+Icon = pygame.image.load(os.path.abspath(os.path.join(bundle_dir, "icon.ico")))
 
 # Camera Transform
 CAMERA_X = 0
@@ -316,7 +320,9 @@ def main():
 	global CAMERA_X, CAMERA_Y, CAMERA_Z, CAMERA_ROT_X, CAMERA_ROT_Y, WindowWidth, WindowHeight
 
 	pygame.init()
+	pygame.display.set_icon(Icon)
 	pygame.display.set_mode((WindowWidth, WindowHeight), DOUBLEBUF | OPENGL | RESIZABLE)
+	pygame.display.set_caption("3D Python Cube Renderer")
 
 	glViewport(0, 0, WindowWidth, WindowHeight)
 	glMatrixMode(GL_PROJECTION)

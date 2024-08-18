@@ -76,6 +76,13 @@ This example will create a green opaque cube at 0, 0, 0 with default scale and w
     - `T`: Enable/disable wireframe mode
     - `B`: Enable/disable lighting
 
+## Building
+
+Simply run build.py to compile the program:
+```sh
+python build.py
+```
+
 ## License
 
 This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.

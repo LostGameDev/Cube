@@ -167,12 +167,13 @@ def setup_lighting():
 	glMaterialf(GL_FRONT, GL_SHININESS, 30.0)  # Lower shininess
 
 class State:
-	def __init__(self, camera, move_speed, sensitivity, wireframe_mode, fullbright, cube_points_dict, loaded_objects_list, objects_loaded, paused, WindowWidth, WindowHeight, Quit):
+	def __init__(self, camera, move_speed, sensitivity, wireframe_mode, fullbright, anti_aliasing, cube_points_dict, loaded_objects_list, objects_loaded, paused, WindowWidth, WindowHeight, Quit):
 		self.camera = camera
 		self.move_speed = move_speed
 		self.sensitivity = sensitivity
 		self.wireframe_mode = wireframe_mode
 		self.fullbright = fullbright
+		self.anti_aliasing = anti_aliasing
 		self.cube_points_dict = cube_points_dict
 		self.loaded_objects_list = loaded_objects_list
 		self.objects_loaded = objects_loaded
@@ -220,6 +221,8 @@ def event_handler(state):
 				state.wireframe_mode = not state.wireframe_mode  # Toggle wireframe mode
 			if event.key == K_b:
 				state.fullbright = not state.fullbright
+			if event.key == K_g:
+				state.anti_aliasing = not state.anti_aliasing
 		if event.type == QUIT:
 			state.Quit = True
 		if event.type == VIDEORESIZE:
@@ -321,6 +324,8 @@ def main():
 
 	pygame.init()
 	pygame.display.set_icon(Icon)
+	pygame.display.gl_set_attribute(pygame.GL_MULTISAMPLEBUFFERS, 1)  # Enable multisampling buffer
+	pygame.display.gl_set_attribute(pygame.GL_MULTISAMPLESAMPLES, 4)  # Number of samples (4x MSAA)
 	pygame.display.set_mode((WindowWidth, WindowHeight), DOUBLEBUF | OPENGL | RESIZABLE)
 	pygame.display.set_caption("3D Python Cube Renderer")
 
@@ -344,6 +349,7 @@ def main():
 		sensitivity=0.1,
 		wireframe_mode=False,
 		fullbright=False,
+		anti_aliasing=True,
 		cube_points_dict={},
 		loaded_objects_list=[],
 		objects_loaded=False,
@@ -358,6 +364,11 @@ def main():
 
 	while True:
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
+
+		if state.anti_aliasing:
+			glEnable(GL_MULTISAMPLE)
+		else:
+			glDisable(GL_MULTISAMPLE)
 
 		load_objects(state)
 		if state.objects_loaded:
